@@ -1,0 +1,11 @@
+{ 
+    "LSTM":{
+        "epochs": 100,
+        "batch_size": 32
+    },
+    "predict":{
+        "look_back": 30,
+        "future_days": 4
+
+    }
+}
