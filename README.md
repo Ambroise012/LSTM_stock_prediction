@@ -18,13 +18,10 @@ This script fetches historical and up-to-date stock data for a given ticker symb
 
 ## Requirements
 
-- Python 3.8+
-- Required libraries: `os`, `sys`, `time`, `random`, `logging`, `datetime`, `requests`, `yfinance`, `numpy`, `pandas`, `matplotlib`, `scikit-learn`, `tensorflow`
-
 Install the dependencies using:
 
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
 
 ---
@@ -51,10 +48,16 @@ pip install -r requirements.txt
 Run the script with the stock ticker symbol as an argument:
 
 ```bash
-python predict_stock.py AAPL
+poetry run streamlit run interface.py
 ```
 
-Replace `AAPL` with the ticker symbol of your choice.
+Or in background:
+
+```bash
+nohup poetry run streamlit run interface.py > streamlit.log 2>&1 &
+```
+
+ `AAPL` with the ticker symbol of your choice.
 
 E.g. of ticker:
 - MSFT : Microsoft
@@ -70,7 +73,8 @@ E.g. of ticker:
 
 - The script saves a plot of the last 30 days of actual stock prices and the forecasted prices for the next N days in the `predict/` directory.
 - The plot is saved as `{ticker}_forecast.png`.
-
+ 
+See interface at: `http://172.26.212.169:8501`
 ---
 
 
