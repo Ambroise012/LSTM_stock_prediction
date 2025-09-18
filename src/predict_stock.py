@@ -18,8 +18,8 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
-from config import config
-from predict_utils import get_company_name, fetch_stock_data, create_dataset
+from src.config import config
+from src.predict_utils import get_company_name, fetch_stock_data, create_dataset
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -76,7 +76,7 @@ testX = testX.reshape((testX.shape[0], testX.shape[1], 1))
 # Build LSTM model
 # =========================
 model = Sequential([
-    Input(shape=(60, 1)),
+    Input(shape=(config.predict.look_back, 1)),
     LSTM(50),
     Dense(1)
 ])
