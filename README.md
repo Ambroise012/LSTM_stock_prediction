@@ -57,7 +57,15 @@ Or in background:
 nohup poetry run streamlit run interface.py > streamlit.log 2>&1 &
 ```
 
- `AAPL` with the ticker symbol of your choice.
+## Deploy
+
+```bash
+poetry lock
+docker build -t predict:0.1.0 .
+docker run -p 8501:8501 predict:0.1.0
+```
+
+`AAPL` with the ticker symbol of your choice.
 
 E.g. of ticker:
 - MSFT : Microsoft
@@ -76,6 +84,5 @@ E.g. of ticker:
  
 See interface at: `http://172.26.212.169:8501`
 ---
-
 
 
