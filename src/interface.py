@@ -20,7 +20,6 @@ if st.button("Predict"):
             proc = subprocess.run([sys.executable, "-m", "src.predict_stock", ticker],
                                     capture_output=True, text=True)
 
-
         if proc.returncode != 0:
             st.error("❌ Prediction script failed")
             st.text(proc.stderr)
@@ -39,7 +38,11 @@ if st.button("Predict"):
                 value=f"{results['predicted_change_pct']:.2f}%",
                 delta=f"Last Close: ${results['last_close']:.2f}"
             )
-
+            # show eval 
+            st.metric("Mean Absolute Error", f"{results['evaluation']['mae']:.2f}")
+            st.metric("Mean Squared Error", f"{results['evaluation']['mse']:.2f}")
+            st.metric("R² Score", f"{results['evaluation']['r2']:.2f}")
+            
             # Show prediction chart
             img_path = f"predict/{ticker}_forecast.png"
             if os.path.exists(img_path):

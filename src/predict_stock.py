@@ -15,6 +15,9 @@ import matplotlib.pyplot as plt
 from keras import Input
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
@@ -56,49 +59,74 @@ scaled_values = scaler.fit_transform(close_values)
 # =========================
 # Create sequences
 # =========================
-def create_dataset(dataset, look_back=1):
+def create_dataset(dataset, look_back=1, horizon=1):
     X, Y = [], []
-    for i in range(len(dataset) - look_back):
+    for i in range(len(dataset) - look_back - horizon + 1):
         X.append(dataset[i:(i + look_back), 0])
-        Y.append(dataset[i + look_back, 0])
+        Y.append(dataset[i + look_back : i + look_back + horizon, 0])
     return np.array(X), np.array(Y)
 
-X, Y = create_dataset(scaled_values, config.predict.look_back)
+# X, Y = create_dataset(scaled_values, config.predict.look_back)
+X, Y = create_dataset(scaled_values, config.predict.look_back, config.predict.future_days)
 
 # =========================
-# Train-test split
+# Train-test split (time-based)
 # =========================
-trainX, testX, trainY, testY = train_test_split(X, Y, test_size=0.2, shuffle=False)
+split_index = int(len(X) * 0.8)
+trainX, testX = X[:split_index], X[split_index:]
+trainY, testY = Y[:split_index], Y[split_index:]
+
 trainX = trainX.reshape((trainX.shape[0], trainX.shape[1], 1))
 testX = testX.reshape((testX.shape[0], testX.shape[1], 1))
 
 # =========================
-# Build LSTM model
+# Build LSTM model with dropout
 # =========================
 model = Sequential([
     Input(shape=(config.predict.look_back, 1)),
-    LSTM(50),
-    Dense(1)
+    LSTM(50, dropout=0.2, recurrent_dropout=0.2),
+    Dense(config.predict.future_days)
 ])
 model.compile(loss='mean_squared_error', optimizer='adam')
 
 # =========================
-# Train model
+# Train model with EarlyStopping
 # =========================
-model.fit(trainX, trainY, epochs=config.LSTM.epochs, batch_size=config.LSTM.batch_size, verbose=1, validation_data=(testX, testY))
+early_stop = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
+
+history = model.fit(
+    trainX, trainY,
+    epochs=config.LSTM.epochs,
+    batch_size=config.LSTM.batch_size,
+    validation_data=(testX, testY),
+    callbacks=[early_stop],
+    verbose=1
+)
+
+# =========================
+# Model evaluation
+# =========================
+test_pred = model.predict(testX)
+test_pred_rescaled = scaler.inverse_transform(test_pred[:, 0].reshape(-1, 1))
+testY_rescaled = scaler.inverse_transform(testY[:, 0].reshape(-1, 1))
+
+mse = mean_squared_error(testY_rescaled, test_pred_rescaled)
+mae = mean_absolute_error(testY_rescaled, test_pred_rescaled)
+r2 = r2_score(testY_rescaled, test_pred_rescaled)
+
+eval_metrics = {
+    "mse": float(mse),
+    "mae": float(mae),
+    "r2": float(r2)
+}
 
 # =========================
 # Plot next days prediction
 # =========================
 last_sequence = scaled_values[-config.predict.look_back:].reshape(1, config.predict.look_back, 1)
-future_predictions = []
-for _ in range(config.predict.future_days):
-    next_pred = model.predict(last_sequence)
-    future_predictions.append(next_pred[0, 0])
-    next_pred_reshaped = next_pred.reshape(1, 1, 1)
-    last_sequence = np.append(last_sequence[:, 1:, :], next_pred_reshaped, axis=1)
+future_predictions = model.predict(last_sequence)
+future_predictions = scaler.inverse_transform(future_predictions.reshape(-1, 1))
 
-future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
 future_dates = [df_ticker.index[-1] + pd.Timedelta(days=i+1) for i in range(config.predict.future_days)]
 
 # Plot
@@ -124,6 +152,7 @@ results = {
     "last_close": float(last_close),
     "predicted_change_pct": float(predicted_change_pct),
     "future_predictions": future_predictions.flatten().tolist(),
+    "evaluation": eval_metrics
 }
 with open(f"predict/{ticker}_results.json", "w") as f:
     json.dump(results, f, indent=4)
