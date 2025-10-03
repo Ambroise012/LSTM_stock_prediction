@@ -137,42 +137,26 @@ def get_company_name(ticker: str) -> str:
         return ticker
 
 
-def fetch_stock_data(ticker):
-    marketstack = MarketstackProvider()
+def fetch_stock_data(ticker: str):
+    """Fetch OHLCV data from Yahoo Finance only."""
     company_name = get_company_name(ticker)
     logger.info(f"Fetching data for {company_name} ({ticker})...")
 
     df_yf = yf.download(ticker, period="max", interval="1d", auto_adjust=False)
+
     if df_yf.empty:
-        logger.warning(f"No Yahoo Finance data for {ticker}, trying Marketstack...")
-        try:
-            ms_symbol = marketstack.resolve_ticker(ticker)
-            df_ms = marketstack.get_stock_data(ms_symbol)
-            if df_ms is not None and not df_ms.empty:
-                return df_ms
-        except Exception as e:
-            logger.error(f"Failed to fetch Marketstack data for {ticker}: {e}")
+        logger.warning(f"No Yahoo Finance data found for {ticker}")
         return None
 
-
     df_yf = df_yf[["Open", "High", "Low", "Close", "Volume"]]
-    last_date = df_yf.index[-1].date()
-    today = datetime.today().date()
+    first_date = df_yf.index.min().date()
+    last_date = df_yf.index.max().date()
+    count = len(df_yf)
 
-    # If Yahoo data is incomplete, supplement with Marketstack
-    if last_date < today:
-        try:
-            ms_symbol = marketstack.resolve_ticker(ticker)
-            df_ms = marketstack.get_stock_data(
-                ms_symbol,
-                start_date=(last_date + timedelta(days=1)).strftime("%Y-%m-%d"),
-                end_date=today.strftime("%Y-%m-%d"),
-            )
-            if df_ms is not None and not df_ms.empty:
-                df_yf = pd.concat([df_yf, df_ms])
-                df_yf = df_yf[~df_yf.index.duplicated(keep="last")]
-        except Exception as e:
-            logger.warning(f"Marketstack fetch failed for {ticker}: {e}")
+    logger.info(
+        f"Yahoo Finance: Extracted {count} rows for {ticker} "
+        f"from {first_date} to {last_date}"
+    )
 
     return df_yf
 

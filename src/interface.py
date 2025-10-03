@@ -50,11 +50,5 @@ if st.button("Predict"):
             else:
                 st.error("Prediction figure not found.")
 
-            # Show table of predictions
-            preds = pd.DataFrame({
-                "Day": [+1, +2, +3, +4],
-                "Predicted Price": results["future_predictions"]
-            })
-            st.dataframe(preds, use_container_width=True)
         else:
             st.error("Prediction results not found. Make sure predict_stock.py ran successfully.")
